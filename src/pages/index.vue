@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import 'dayjs/locale/zh-cn'
-import foresightData from '../data/foresight_data_20250211.json'
+import { computed, ref } from 'vue'
+import foresightData from '../data/foresight_data_20250310.json'
 import defaultHiddenIds from '../data/hidenId.json'
+import 'dayjs/locale/zh-cn'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -12,7 +12,7 @@ dayjs.locale('zh-cn')
 const STORAGE_KEY = 'hiddenNewsIds'
 
 // 从localStorage获取隐藏的新闻ID,并与默认隐藏ID合并
-const getHiddenIds = () => {
+function getHiddenIds() {
   const localHidden = localStorage.getItem(STORAGE_KEY)
   const localIds = localHidden ? JSON.parse(localHidden) : []
   // 合并本地存储和默认隐藏ID,并去重
@@ -22,13 +22,26 @@ const getHiddenIds = () => {
 // 隐藏的新闻ID
 const hiddenNewsIds = ref(getHiddenIds())
 
+// 搜索关键词
+const searchKeyword = ref('')
+const showImportantOnly = ref(false)
+
 // 过滤后的新闻列表
 const filteredNews = computed(() => {
-  return foresightData.items.filter(item => !hiddenNewsIds.value.includes(item.id))
+  return foresightData
+    .filter(item => !hiddenNewsIds.value.includes(item.id))
+    .filter((item) => {
+      if (showImportantOnly.value && !isImportant(item))
+        return false
+      if (!searchKeyword.value)
+        return true
+      const title = getTitle(item)?.toLowerCase() || ''
+      return title.includes(searchKeyword.value.toLowerCase())
+    })
 })
 
 // 隐藏新闻
-const hideNews = (id: number) => {
+function hideNews(id: number) {
   if (!hiddenNewsIds.value.includes(id)) {
     hiddenNewsIds.value.push(id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenNewsIds.value))
@@ -36,28 +49,30 @@ const hideNews = (id: number) => {
 }
 
 // 显示新闻
-const showNews = (id: number) => {
+function showNews(id: number) {
   hiddenNewsIds.value = hiddenNewsIds.value.filter(hid => hid !== id)
   localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenNewsIds.value))
 }
 
 // 复制隐藏ID到剪贴板
-const copyHiddenIds = async () => {
+async function copyHiddenIds() {
   try {
     const idsString = JSON.stringify(hiddenNewsIds.value)
     await navigator.clipboard.writeText(idsString)
     alert('已复制到剪贴板')
-  } catch (err) {
+  }
+  catch (err) {
     console.error('复制失败:', err)
     alert('复制失败')
   }
 }
 
 // 导入隐藏ID
-const importHiddenIds = (event: Event) => {
+function importHiddenIds(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  if (!file)
+    return
 
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -70,7 +85,8 @@ const importHiddenIds = (event: Event) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenNewsIds.value))
         alert('导入成功')
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error('导入失败:', err)
       alert('导入失败')
     }
@@ -79,7 +95,7 @@ const importHiddenIds = (event: Event) => {
 }
 
 // 导出隐藏ID
-const exportHiddenIds = () => {
+function exportHiddenIds() {
   const idsString = JSON.stringify(hiddenNewsIds.value)
   const blob = new Blob([idsString], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -93,17 +109,17 @@ const exportHiddenIds = () => {
 }
 
 // 格式化时间
-const formatTime = (timestamp: number) => {
-  return dayjs(timestamp * 1000).fromNow()
+function formatTime(timestamp: number) {
+  return dayjs(timestamp * 1000).locale('zh-cn').format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 获取链接
-const getLink = (item: any) => {
+function getLink(item: any) {
   return item.source_type === 'news' ? item.news.source_link : item.link
 }
 
 // 获取标题
-const getTitle = (item: any) => {
+function getTitle(item: any) {
   if (item.source_type === 'news') {
     const newsData = item.news
     // 优先使用news对象中的title
@@ -115,7 +131,8 @@ const getTitle = (item: any) => {
     const brief = newsData?.brief || ''
     const briefPreview = brief.slice(0, 10) + (brief.length > 10 ? '...' : '')
     return name ? `${name} ${briefPreview}` : briefPreview
-  } else {
+  }
+  else {
     // 非news类型,使用外层的title/name/brief
     if (item.title) {
       return item.title
@@ -128,90 +145,106 @@ const getTitle = (item: any) => {
 }
 
 // 判断是否重要消息
-const isImportant = (item: any) => {
+function isImportant(item: any) {
   return item.source_type === 'news' && item.news.is_important
 }
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">
-        {{ foresightData.title }}
-      </h1>
-      <div class="flex items-center space-x-4">
-        <button
-          @click="copyHiddenIds"
-          class="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-sm font-medium"
-        >
-          复制ID列表
-        </button>
-        <button
-          @click="exportHiddenIds"
-          class="px-4 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 text-sm font-medium"
-        >
-          导出JSON
-        </button>
-        <input
-          type="file"
-          accept=".json"
-          @change="importHiddenIds"
-          class="hidden"
-          id="fileInput"
-        >
-        <label
-          for="fileInput"
-          class="px-4 py-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 cursor-pointer text-sm font-medium"
-        >
-          导入JSON
-        </label>
-      </div>
-    </div>
+  <div class="mx-auto px-4 py-4 container">
+    <div class="mb-6">
+      <Author time="2025-03-10" />
+      <div class="flex items-center justify-between space-x-4">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-2xl font-bold">
+            精选潜在空投汇总
+          </h1>
+        </div>
 
-    <div class="mb-4 text-sm text-gray-500">
-      已隐藏 {{ hiddenNewsIds.length }} 条新闻
+        <div class="max-w-2xl flex flex-1 items-center space-x-4">
+          <div class="relative flex-1">
+            <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="搜索关键词..."
+              class="w-full border border-gray-300 rounded-md px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              class="whitespace-nowrap rounded px-4 py-2 text-sm font-medium"
+              :class="showImportantOnly ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'"
+              @click="showImportantOnly = !showImportantOnly"
+            >
+              {{ showImportantOnly ? '查看全部' : '只看重要' }}
+            </button>
+          </div>
+          <button
+            class="whitespace-nowrap rounded bg-blue-50 px-4 py-2 text-sm text-blue-600 font-medium hover:bg-blue-100"
+            @click="copyHiddenIds"
+          >
+            复制隐藏ID列表
+          </button>
+          <input
+            id="fileInput"
+            type="file"
+            accept=".json"
+            class="hidden"
+            @change="importHiddenIds"
+          >
+          <label
+            for="fileInput"
+            class="cursor-pointer whitespace-nowrap rounded bg-gray-50 px-4 py-2 text-sm text-gray-600 font-medium hover:bg-gray-100"
+          >
+            导入隐藏ID列表
+          </label>
+          <div class="whitespace-nowrap text-sm text-gray-500">
+            已隐藏 {{ hiddenNewsIds.length }} 条新闻
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="table-container">
       <table class="min-w-full bg-white">
         <thead class="bg-gray-50">
           <tr>
-            <th class="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+            <th class="sticky top-0 bg-gray-50 px-6 py-3 text-left text-xs text-gray-500 font-medium tracking-wider uppercase">
               标题
             </th>
-            <th class="sticky top-0 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 w-32">
+            <th class="sticky top-0 w-32 bg-gray-50 px-6 py-3 text-center text-xs text-gray-500 font-medium tracking-wider uppercase">
               类型
             </th>
-            <th class="sticky top-0 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 w-40">
+            <th class="sticky top-0 w-40 bg-gray-50 px-6 py-3 text-center text-xs text-gray-500 font-medium tracking-wider uppercase">
               发布时间
             </th>
-            <th class="sticky top-0 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 w-40">
+            <th class="sticky top-0 w-40 bg-gray-50 px-6 py-3 text-center text-xs text-gray-500 font-medium tracking-wider uppercase">
               操作
             </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr 
-            v-for="item in filteredNews" 
+          <tr
+            v-for="item in filteredNews"
             :key="item.id"
             class="hover:bg-gray-50"
           >
             <td class="px-6 py-4">
               <div class="flex items-center space-x-2">
-                <span 
+                <span
                   v-if="isImportant(item)"
-                  class="flex-shrink-0 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800"
+                  class="inline-flex flex-shrink-0 rounded-full bg-red-100 px-2 text-xs text-red-800 font-semibold leading-5"
                 >
                   重要
                 </span>
-                <div class="text-sm font-medium text-gray-900 truncate">
+                <div class="truncate text-sm text-gray-900 font-medium">
                   {{ getTitle(item) }}
                 </div>
               </div>
             </td>
             <td class="px-6 py-4">
-              <span 
-                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+              <span
+                class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
                 :class="item.source_type === 'news' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'"
               >
                 {{ item.source_type }}
@@ -222,16 +255,17 @@ const isImportant = (item: any) => {
             </td>
             <td class="px-6 py-4 text-sm">
               <div class="flex items-center space-x-4">
-                <a 
+                <a
                   :href="getLink(item)"
                   target="_blank"
-                  class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50"
+                  :disabled="!getLink(item)"
+                  class="inline-flex items-center border border-blue-600 rounded-md px-3 py-1.5 text-blue-600 hover:bg-blue-50"
                 >
                   查看原文
                 </a>
                 <button
+                  class="inline-flex items-center border border-gray-300 rounded-md px-3 py-1.5 text-gray-700 hover:bg-gray-50"
                   @click="hideNews(item.id)"
-                  class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                 >
                   隐藏
                 </button>
@@ -298,8 +332,8 @@ thead {
 }
 
 /* 美化按钮过渡效果 */
-button, a {
+button,
+a {
   transition: all 0.2s ease;
 }
 </style>
-
