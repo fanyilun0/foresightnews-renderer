@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref } from 'vue'
-import foresightData from '../data/foresight_data_20250310.json'
+import foresightData from '../data/foresight_data_20250210.json'
 import defaultHiddenIds from '../data/hidenId.json'
 import 'dayjs/locale/zh-cn'
 
