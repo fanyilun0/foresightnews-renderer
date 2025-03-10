@@ -35,6 +35,9 @@ jobs:
         run: |
           python src/data_process.py
 
+      - name: Update import path in Vue file
+        run: python src/update_import_path.py
+
       - name: Configure Git
         run: |
           git config --local user.email "action@github.com"
@@ -43,4 +46,5 @@ jobs:
       - name: Commit and push if changed
         run: |
           git add src/data/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update data $(date +'%Y-%m-%d')" && git push)
+          git add src/pages/index.vue
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update data and import path $(date +'%Y-%m-%d')" && git push)
