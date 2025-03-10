@@ -17,6 +17,9 @@ def update_vue_import_path():
     latest_filename = os.path.basename(latest_file)
     print(f"Latest data file: {latest_filename}")
 
+    # 获取当前日期作为更新时间
+    current_date = datetime.now().strftime("%Y-%m-%d")
+
     # 读取 index.vue 文件
     vue_file_path = os.path.join(os.path.dirname(__file__), "pages", "index.vue")
 
@@ -30,9 +33,16 @@ def update_vue_import_path():
         content
     )
 
+    # 更新 Author 组件中的时间属性
+    updated_content = re.sub(
+        r'<Author time="[^"]*"',
+        f'<Author time="{current_date}"',
+        updated_content
+    )
+
     # 检查是否有变更
     if content == updated_content:
-        print("No changes needed in import path.")
+        print("No changes needed in import path or update time.")
         return False
 
     # 写回文件
@@ -40,6 +50,7 @@ def update_vue_import_path():
         file.write(updated_content)
 
     print(f"Updated import path to: '../data/{latest_filename}'")
+    print(f"Updated time to: '{current_date}'")
     return True
 
 if __name__ == "__main__":
