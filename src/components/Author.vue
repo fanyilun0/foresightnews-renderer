@@ -9,7 +9,7 @@ defineProps({
 const author = ref({
   name: 'fanyilun0',
   avatar: 'https://avatars.githubusercontent.com/u/136059942',
-  github: 'https://github.com/fanyilun',
+  github: 'https://github.com/fanyilun0',
   twitter: 'https://twitter.com/fanyilun0',
   telegram: 'https://t.me/fanyilun0',
   discord: 'https://discord.gg/YytbFdFcYN',
