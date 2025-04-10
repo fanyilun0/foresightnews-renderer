@@ -81,7 +81,9 @@ const author = ref({
     </div>
     <div class="text-sm text-gray-500">
       <p>
-        数据来源: <a href="https://foresightnews.pro/timeline/detail/53" target="_blank" class="text-blue-600 hover:text-blue-700">ForesightNews</a>
+        数据来源: 
+        <a href="https://foresightnews.pro/timeline/detail/53" target="_blank" class="text-blue-600 hover:text-blue-700">53</a> | 
+        <a href="https://foresightnews.pro/timeline/detail/235" target="_blank" class="text-blue-600 hover:text-blue-700">235</a>
       </p>
       <p class="mt-1">
         最后更新时间: {{ time }}

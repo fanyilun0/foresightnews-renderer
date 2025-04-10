@@ -15,7 +15,8 @@ from typing import Optional, List, Dict
 
 class ForesightCrawler:
     def __init__(self):
-        self.base_url = "https://api.foresightnews.pro/v1/event/53"
+        self.base_api_url = "https://api.foresightnews.pro/v1/event"
+        self.timeline_ids = [53, 235]  # 需要获取的时间线ID列表
         self.page_size = 20
         self.max_workers = 5
         self.max_retries = 3
@@ -127,8 +128,9 @@ class ForesightCrawler:
             if "id" not in item or "published_at" not in item:
                 raise ValueError("item 缺少必要字段")
                 
-    def fetch_page(self, page: int) -> Optional[Dict]:
+    def fetch_page(self, timeline_id: int, page: int) -> Optional[Dict]:
         """获取单页数据"""
+        url = f"{self.base_api_url}/{timeline_id}"
         params = {
             "page": page,
             "size": self.page_size,
@@ -136,8 +138,8 @@ class ForesightCrawler:
         }
         
         def _fetch():
-            self.logger.info(f"请求第{page}页数据...")
-            resp = requests.get(self.base_url, params=params, timeout=10)
+            self.logger.info(f"请求时间线#{timeline_id}的第{page}页数据...")
+            resp = requests.get(url, params=params, timeout=10)
             
             try:
                 data = resp.json()
@@ -274,46 +276,15 @@ class ForesightCrawler:
     def fetch_all(self) -> Optional[List[Dict]]:
         """获取所有数据"""
         try:
-            # 获取第一页来确定总页数
-            first_page = self.fetch_page(1)
-            if not first_page:
-                self.logger.error("获取第一页数据失败")
-                return None
-                
-            total = first_page["total"]
-            
-            # 检查本地数据
-            local_data = self.get_latest_data()
-            if local_data:
-                # 检查数据量和最新时间戳
-                if (len(local_data) == total and 
-                    local_data[0]["published_at"] == first_page["items"][0]["published_at"]):
-                    self.logger.info("使用本地数据")
-                    return local_data
-            
-            # 如果本地数据不完整或不是最新的,进行完整爬取
-            self.logger.info(f"开始完整爬取,总数据量: {total}")
-            total_pages = (total + self.page_size - 1) // self.page_size
-            
-            # 使用线程池获取所有页面数据
             all_items = []
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_page = {
-                    executor.submit(self.fetch_page, page): page 
-                    for page in range(1, total_pages + 1)
-                }
-                
-                for future in as_completed(future_to_page):
-                    page = future_to_page[future]
-                    try:
-                        data = future.result()
-                        if data and "items" in data:
-                            self.logger.info(f"成功获取第{page}页数据")
-                            all_items.extend(data["items"])
-                        else:
-                            self.logger.error(f"获取第{page}页数据失败")
-                    except Exception as e:
-                        self.logger.error(f"处理第{page}页数据时出错: {e}")
+            
+            for timeline_id in self.timeline_ids:
+                timeline_items = self.fetch_timeline_data(timeline_id)
+                if timeline_items:
+                    all_items.extend(timeline_items)
+                    self.logger.info(f"成功获取时间线#{timeline_id}数据，共{len(timeline_items)}条")
+                else:
+                    self.logger.error(f"获取时间线#{timeline_id}数据失败")
                         
             if all_items:
                 # 按发布时间排序(倒序)
@@ -327,6 +298,49 @@ class ForesightCrawler:
                 
         except Exception as e:
             self.logger.error(f"获取所有数据失败: {e}")
+            return None
+            
+    def fetch_timeline_data(self, timeline_id: int) -> Optional[List[Dict]]:
+        """获取指定时间线的所有数据"""
+        try:
+            # 获取第一页来确定总页数
+            first_page = self.fetch_page(timeline_id, 1)
+            if not first_page:
+                self.logger.error(f"获取时间线#{timeline_id}第一页数据失败")
+                return None
+                
+            total = first_page["total"]
+            self.logger.info(f"开始爬取时间线#{timeline_id}，总数据量: {total}")
+            total_pages = (total + self.page_size - 1) // self.page_size
+            
+            # 使用线程池获取所有页面数据
+            timeline_items = []
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                future_to_page = {
+                    executor.submit(self.fetch_page, timeline_id, page): page 
+                    for page in range(1, total_pages + 1)
+                }
+                
+                for future in as_completed(future_to_page):
+                    page = future_to_page[future]
+                    try:
+                        data = future.result()
+                        if data and "items" in data:
+                            self.logger.info(f"成功获取时间线#{timeline_id}第{page}页数据")
+                            timeline_items.extend(data["items"])
+                        else:
+                            self.logger.error(f"获取时间线#{timeline_id}第{page}页数据失败")
+                    except Exception as e:
+                        self.logger.error(f"处理时间线#{timeline_id}第{page}页数据时出错: {e}")
+                        
+            if timeline_items:
+                return timeline_items
+            else:
+                self.logger.error(f"未获取到时间线#{timeline_id}的任何数据")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"获取时间线#{timeline_id}数据失败: {e}")
             return None
 
 def main():
