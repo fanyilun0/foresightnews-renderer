@@ -2,8 +2,8 @@ name: Update Foresight News Data
 
 on:
   schedule:
-    # 每周五零点运行 (UTC时间，对应北京时间8点)
-    - cron: '0 0 * * 5'
+    # 每周天零点运行 (UTC时间，对应北京时间8点)
+    - cron: '0 0 * * *'
   workflow_dispatch: # 允许手动触发
 
 permissions:
