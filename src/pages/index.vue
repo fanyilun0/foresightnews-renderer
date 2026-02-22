@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref } from 'vue'
-import foresightData from '../data/foresight_data_20260221.json'
+import foresightData from '../data/foresight_data_20260222.json'
 import defaultHiddenIds from '../data/hidenId.json'
 import 'dayjs/locale/zh-cn'
 
@@ -153,7 +153,7 @@ function isImportant(item: any) {
 <template>
   <div class="mx-auto px-4 py-4 container">
     <div class="mb-6">
-      <Author time="2026-02-21" />
+      <Author time="2026-02-22" />
       <div class="flex items-center justify-between space-x-4">
         <div class="flex items-center space-x-4">
           <h1 class="text-2xl font-bold">
