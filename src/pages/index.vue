@@ -153,7 +153,7 @@ function isImportant(item: any) {
 <template>
   <div class="mx-auto px-4 py-4 container">
     <div class="mb-6">
-      <Author time="2026-04-06" />
+      <Author time="2026-04-07" />
       <div class="flex items-center justify-between space-x-4">
         <div class="flex items-center space-x-4">
           <h1 class="text-2xl font-bold">
